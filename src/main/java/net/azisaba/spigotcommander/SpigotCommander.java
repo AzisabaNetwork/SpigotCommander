@@ -67,7 +67,7 @@ public class SpigotCommander extends JavaPlugin {
             // generate default files
             saveDefaultConfig();
             if (!new File(getDataFolder(), "classes").exists()) {
-                saveResource("classes/GiveDiamond.java", true);
+                saveResource("classes/Ping.java", true);
             }
 
             // reload config
