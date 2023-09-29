@@ -73,12 +73,7 @@ public class SpigotCommander extends JavaPlugin {
             // reload config
             reloadConfig();
         }, syncExecutor).thenApplyAsync(dummy -> {
-            // load configuration
-            ConfigurationSection section = getConfig().getConfigurationSection("commands");
-            if (section == null) {
-                getLogger().warning("No commands are defined.");
-                return null;
-            }
+            // compile all classes
             String packageName = getNextPackageName();
             try {
                 Path tmp = Files.createTempDirectory("spigotcommander-live-compiler-src-");
@@ -127,84 +122,84 @@ public class SpigotCommander extends JavaPlugin {
             return packageName;
         }).thenAcceptAsync(packageName -> {
             // load commands
-            ConfigurationSection section = getConfig().getConfigurationSection("commands");
-            if (packageName == null || section == null) {
-                return;
-            }
-            for (String key : section.getKeys(false)) {
-                ConfigurationSection commandSection = section.getConfigurationSection(key);
-                if (commandSection == null) continue;
-                String commandName = key.toLowerCase();
-                if (commandName.equals("spigotcommander")) {
-                    getSLF4JLogger().warn("Skipping reserved name: {}", commandName);
-                    continue;
-                }
-                String className = commandSection.getString("class");
-                // construct command executor
-                Class<?> clazz;
-                CommandExecutor commandExecutor = null;
-                try {
-                    clazz = cl.get().loadClass(packageName + "." + className);
-                } catch (ClassNotFoundException e) {
-                    getSLF4JLogger().error("Failed to load class {}", className, e);
-                    continue;
-                }
-                try {
-                    commandExecutor = (CommandExecutor) clazz.getConstructor().newInstance();
-                } catch (ReflectiveOperationException ignored) {
-                }
-                try {
-                    commandExecutor = (CommandExecutor) clazz.getConstructor(Plugin.class).newInstance(this);
-                } catch (ReflectiveOperationException ignored) {
-                }
-                try {
-                    commandExecutor = (CommandExecutor) clazz.getConstructor(JavaPlugin.class).newInstance(this);
-                } catch (ReflectiveOperationException ignored) {
-                }
-                try {
-                    commandExecutor = (CommandExecutor) clazz.getConstructor(SpigotCommander.class).newInstance(this);
-                } catch (ReflectiveOperationException ignored) {
-                }
-                if (commandExecutor == null) {
-                    getSLF4JLogger().error("No valid constructor found in " + clazz);
-                    getSLF4JLogger().error("Constructor must be one of these:");
-                    getSLF4JLogger().error("- public " + clazz.getSimpleName() + "()");
-                    getSLF4JLogger().error("- public " + clazz.getSimpleName() + "(org.bukkit.plugin.Plugin)");
-                    getSLF4JLogger().error("- public " + clazz.getSimpleName() + "(org.bukkit.plugin.java.JavaPlugin)");
-                    getSLF4JLogger().error("- public " + clazz.getSimpleName() + "(" + SpigotCommander.class.getCanonicalName() + ")");
-                    continue;
-                }
-                // register command
-                String permission = commandSection.getString("permission");
-                String permissionMessage = commandSection.getString("permissionMessage");
-                String description = Objects.requireNonNull(commandSection.getString("description", ""));
-                String usage = Objects.requireNonNull(commandSection.getString("usage", ""));
-                List<String> aliases = commandSection.getStringList("aliases");
-                CommandExecutor finalCommandExecutor = commandExecutor;
-                Command command = new Command(commandName, description, usage, aliases) {
-                    @Override
-                    public boolean execute(@NotNull CommandSender sender, @NotNull String commandLabel, @NotNull String[] args) {
-                        return finalCommandExecutor.onCommand(sender, this, commandLabel, args);
+            ConfigurationSection commandsSection = getConfig().getConfigurationSection("commands");
+            if (commandsSection != null) {
+                for (String key : commandsSection.getKeys(false)) {
+                    ConfigurationSection commandSection = commandsSection.getConfigurationSection(key);
+                    if (commandSection == null) continue;
+                    String commandName = key.toLowerCase();
+                    if (commandName.equals("spigotcommander")) {
+                        getSLF4JLogger().warn("Skipping reserved name: {}", commandName);
+                        continue;
                     }
-
-                    @Override
-                    public @NotNull List<String> tabComplete(@NotNull CommandSender sender, @NotNull String alias, @NotNull String[] args) throws IllegalArgumentException {
-                        if (finalCommandExecutor instanceof TabCompleter) {
-                            ((TabCompleter) finalCommandExecutor).onTabComplete(sender, this, alias, args);
+                    String className = commandSection.getString("class");
+                    // construct command executor
+                    Class<?> clazz;
+                    CommandExecutor commandExecutor = null;
+                    try {
+                        clazz = cl.get().loadClass(packageName + "." + className);
+                    } catch (ClassNotFoundException e) {
+                        getSLF4JLogger().error("Failed to load class {}", className, e);
+                        continue;
+                    }
+                    try {
+                        commandExecutor = (CommandExecutor) clazz.getConstructor().newInstance();
+                    } catch (ReflectiveOperationException ignored) {
+                    }
+                    try {
+                        commandExecutor = (CommandExecutor) clazz.getConstructor(Plugin.class).newInstance(this);
+                    } catch (ReflectiveOperationException ignored) {
+                    }
+                    try {
+                        commandExecutor = (CommandExecutor) clazz.getConstructor(JavaPlugin.class).newInstance(this);
+                    } catch (ReflectiveOperationException ignored) {
+                    }
+                    try {
+                        commandExecutor = (CommandExecutor) clazz.getConstructor(SpigotCommander.class).newInstance(this);
+                    } catch (ReflectiveOperationException ignored) {
+                    }
+                    if (commandExecutor == null) {
+                        getSLF4JLogger().error("No valid constructor found in " + clazz);
+                        getSLF4JLogger().error("Constructor must be one of these:");
+                        getSLF4JLogger().error("- public " + clazz.getSimpleName() + "()");
+                        getSLF4JLogger().error("- public " + clazz.getSimpleName() + "(org.bukkit.plugin.Plugin)");
+                        getSLF4JLogger().error("- public " + clazz.getSimpleName() + "(org.bukkit.plugin.java.JavaPlugin)");
+                        getSLF4JLogger().error("- public " + clazz.getSimpleName() + "(" + SpigotCommander.class.getCanonicalName() + ")");
+                        continue;
+                    }
+                    // register command
+                    String permission = commandSection.getString("permission");
+                    String permissionMessage = commandSection.getString("permissionMessage");
+                    String description = Objects.requireNonNull(commandSection.getString("description", ""));
+                    String usage = Objects.requireNonNull(commandSection.getString("usage", ""));
+                    List<String> aliases = commandSection.getStringList("aliases");
+                    CommandExecutor finalCommandExecutor = commandExecutor;
+                    Command command = new Command(commandName, description, usage, aliases) {
+                        @Override
+                        public boolean execute(@NotNull CommandSender sender, @NotNull String commandLabel, @NotNull String[] args) {
+                            return finalCommandExecutor.onCommand(sender, this, commandLabel, args);
                         }
-                        return super.tabComplete(sender, alias, args);
-                    }
-                };
-                command.setPermission(permission);
-                command.setPermissionMessage(permissionMessage);
-                commands.put(commandName, command);
-                Bukkit.getCommandMap().register(commandName, "spigotcommander", command);
-                getSLF4JLogger().info("Registered command {} -> {} ({})", commandName, command, commandExecutor);
-            }
-            try {
-                CommandUtil.syncCommands();
-            } catch (Exception e) {
-                getSLF4JLogger().warn("Failed to sync commands", e);
+
+                        @Override
+                        public @NotNull List<String> tabComplete(@NotNull CommandSender sender, @NotNull String alias, @NotNull String[] args) throws IllegalArgumentException {
+                            if (finalCommandExecutor instanceof TabCompleter) {
+                                List<String> list = ((TabCompleter) finalCommandExecutor).onTabComplete(sender, this, alias, args);
+                                if (list != null) return list;
+                            }
+                            return super.tabComplete(sender, alias, args);
+                        }
+                    };
+                    command.setPermission(permission);
+                    command.setPermissionMessage(permissionMessage);
+                    commands.put(commandName, command);
+                    Bukkit.getCommandMap().register(commandName, "spigotcommander", command);
+                    getSLF4JLogger().info("Registered command {} -> {} ({})", commandName, command, commandExecutor);
+                }
+                try {
+                    CommandUtil.syncCommands();
+                } catch (Exception e) {
+                    getSLF4JLogger().warn("Failed to sync commands", e);
+                }
             }
         }, asyncExecutor);
     }
