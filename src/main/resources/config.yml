@@ -1,0 +1,5 @@
+commands:
+  givediamond:
+    class: GiveDiamond
+    permission: spigotcommander.givediamond
+    usage: /givediamond <player>

@@ -1,0 +1,7 @@
+name: SpigotCommander
+version: @version@
+main: net.azisaba.spigotcommander.SpigotCommander
+api-version: 1.13
+commands:
+  spigotcommander:
+    permission: spigotcommander.command.spigotcommander
