@@ -1,6 +1,7 @@
 package net.azisaba.spigotcommander;
 
 import net.azisaba.spigotcommander.commands.SpigotCommanderCommand;
+import net.azisaba.spigotcommander.util.ClassUtil;
 import net.azisaba.spigotcommander.util.CommandUtil;
 import net.azisaba.spigotcommander.util.FileUtil;
 import net.azisaba.spigotcommander.util.tools.JavaCompiler;
@@ -11,7 +12,8 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.configuration.ConfigurationSection;
-import org.bukkit.plugin.Plugin;
+import org.bukkit.event.HandlerList;
+import org.bukkit.event.Listener;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
 
@@ -47,6 +49,9 @@ public class SpigotCommander extends JavaPlugin {
 
     public @NotNull CompletableFuture<Void> reload() {
         return CompletableFuture.runAsync(() -> {
+            // unregister listeners
+            HandlerList.unregisterAll(this);
+
             // unregister commands
             Map<String, Command> knownCommands = Bukkit.getCommandMap().getKnownCommands();
             commands.forEach((label, command) -> {
@@ -67,7 +72,8 @@ public class SpigotCommander extends JavaPlugin {
             // generate default files
             saveDefaultConfig();
             if (!new File(getDataFolder(), "classes").exists()) {
-                saveResource("classes/Ping.java", true);
+                saveResource("classes/PingCommand.java", true);
+                saveResource("classes/WelcomeListener.java", true);
             }
 
             // reload config
@@ -121,6 +127,19 @@ public class SpigotCommander extends JavaPlugin {
             }
             return packageName;
         }).thenAcceptAsync(packageName -> {
+            // load listeners
+            for (String className : getConfig().getStringList("listeners")) {
+                // construct command executor
+                Listener listener;
+                try {
+                    listener = (Listener) ClassUtil.construct(cl.get(), packageName + "." + className, this);
+                } catch (Exception e) {
+                    getSLF4JLogger().error("Failed to load class {}", className, e);
+                    continue;
+                }
+                Bukkit.getPluginManager().registerEvents(listener, this);
+                getSLF4JLogger().info("Added listener {}", listener);
+            }
             // load commands
             ConfigurationSection commandsSection = getConfig().getConfigurationSection("commands");
             if (commandsSection != null) {
@@ -134,37 +153,11 @@ public class SpigotCommander extends JavaPlugin {
                     }
                     String className = commandSection.getString("class");
                     // construct command executor
-                    Class<?> clazz;
-                    CommandExecutor commandExecutor = null;
+                    CommandExecutor commandExecutor;
                     try {
-                        clazz = cl.get().loadClass(packageName + "." + className);
-                    } catch (ClassNotFoundException e) {
+                        commandExecutor = (CommandExecutor) ClassUtil.construct(cl.get(), packageName + "." + className, this);
+                    } catch (Exception e) {
                         getSLF4JLogger().error("Failed to load class {}", className, e);
-                        continue;
-                    }
-                    try {
-                        commandExecutor = (CommandExecutor) clazz.getConstructor().newInstance();
-                    } catch (ReflectiveOperationException ignored) {
-                    }
-                    try {
-                        commandExecutor = (CommandExecutor) clazz.getConstructor(Plugin.class).newInstance(this);
-                    } catch (ReflectiveOperationException ignored) {
-                    }
-                    try {
-                        commandExecutor = (CommandExecutor) clazz.getConstructor(JavaPlugin.class).newInstance(this);
-                    } catch (ReflectiveOperationException ignored) {
-                    }
-                    try {
-                        commandExecutor = (CommandExecutor) clazz.getConstructor(SpigotCommander.class).newInstance(this);
-                    } catch (ReflectiveOperationException ignored) {
-                    }
-                    if (commandExecutor == null) {
-                        getSLF4JLogger().error("No valid constructor found in " + clazz);
-                        getSLF4JLogger().error("Constructor must be one of these:");
-                        getSLF4JLogger().error("- public " + clazz.getSimpleName() + "()");
-                        getSLF4JLogger().error("- public " + clazz.getSimpleName() + "(org.bukkit.plugin.Plugin)");
-                        getSLF4JLogger().error("- public " + clazz.getSimpleName() + "(org.bukkit.plugin.java.JavaPlugin)");
-                        getSLF4JLogger().error("- public " + clazz.getSimpleName() + "(" + SpigotCommander.class.getCanonicalName() + ")");
                         continue;
                     }
                     // register command
@@ -193,7 +186,7 @@ public class SpigotCommander extends JavaPlugin {
                     command.setPermissionMessage(permissionMessage);
                     commands.put(commandName, command);
                     Bukkit.getCommandMap().register(commandName, "spigotcommander", command);
-                    getSLF4JLogger().info("Registered command {} -> {} ({})", commandName, command, commandExecutor);
+                    getSLF4JLogger().info("Added command {} -> {} ({})", commandName, command, commandExecutor);
                 }
                 try {
                     CommandUtil.syncCommands();

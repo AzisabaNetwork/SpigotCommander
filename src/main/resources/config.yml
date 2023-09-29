@@ -1,5 +1,7 @@
+listeners:
+  - WelcomeListener
 commands:
   ping:
-    class: Ping
+    class: PingCommand
     permission: spigotcommander.ping
     usage: /ping

@@ -28,8 +28,9 @@ public class SpigotCommanderCommand implements TabExecutor {
             return true;
         }
         if (args[0].equalsIgnoreCase("reload")) {
-            sender.sendMessage(ChatColor.GOLD + "コマンドをリロード中です。");
-            plugin.reload().thenRun(() -> sender.sendMessage(ChatColor.GREEN + "リロードが完了しました。"));
+            sender.sendMessage(ChatColor.GOLD + "ファイルをリロード中です。");
+            long start = System.currentTimeMillis();
+            plugin.reload().thenRun(() -> sender.sendMessage(ChatColor.GREEN + "リロードが完了しました。" + ChatColor.DARK_GRAY + " (" + (System.currentTimeMillis() - start) + "ms)"));
         }
         return true;
     }
