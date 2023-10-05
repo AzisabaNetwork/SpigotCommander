@@ -109,6 +109,7 @@ public class SpigotCommander extends JavaPlugin {
                     });
                 }
                 // compile
+                JavaCompiler.setupClasspath(getConfig().getStringList("classpath-imports"));
                 Path compiled = JavaCompiler.compileAll(tmp.toFile(), true).toPath();
                 Runtime.getRuntime().addShutdownHook(new Thread(() -> {
                     try {
@@ -121,7 +122,7 @@ public class SpigotCommander extends JavaPlugin {
                 // post compile
                 // remove source directory
                 FileUtil.deleteRecursively(tmp);
-                cl.set(new URLClassLoader(new URL[]{compiled.toUri().toURL()}));
+                cl.set(new URLClassLoader(new URL[]{compiled.toUri().toURL()}, getClassLoader()));
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
@@ -194,7 +195,10 @@ public class SpigotCommander extends JavaPlugin {
                     getSLF4JLogger().warn("Failed to sync commands", e);
                 }
             }
-        }, asyncExecutor);
+        }, asyncExecutor).exceptionally(t -> {
+            getSLF4JLogger().error("Failed to reload", t);
+            return null;
+        });
     }
 
     @Override

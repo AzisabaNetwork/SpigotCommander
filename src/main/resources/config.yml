@@ -5,3 +5,8 @@ commands:
     class: PingCommand
     permission: spigotcommander.ping
     usage: /ping
+
+# classes written here will be added to classpath (classpath is considered by file-basis)
+# so if you want to import classes on Essentials, just write com.earth2me.essentials.Essentials
+classpath-imports:
+  - org.bukkit.Bukkit

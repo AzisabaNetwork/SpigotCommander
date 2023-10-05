@@ -1,7 +1,6 @@
 package net.azisaba.spigotcommander.util.tools;
 
 import com.google.common.base.Joiner;
-import com.google.common.collect.ImmutableSet;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import net.azisaba.spigotcommander.util.ClasspathUtil;
 import net.azisaba.spigotcommander.util.ThreadLocalLoggedBufferedOutputStream;
@@ -17,10 +16,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -30,34 +26,42 @@ import java.util.stream.Stream;
 
 public class JavaCompiler {
     private static final Logger LOGGER = LoggerFactory.getLogger("SpigotCommander");
-    public static final Set<String> classpath;
+    public static final Set<String> classpath = new HashSet<>();
 
-    static {
-        Set<String> cp = new HashSet<>();
-        addToClasspath(cp, "org.bukkit.Bukkit", true);
-        addToClasspath(cp, "org.jetbrains.annotations.NotNull", false);
-        addToClasspath(cp, "javax.annotation.Nonnull", false);
-        addToClasspath(cp, "org.objectweb.asm.ClassVisitor", false);
-        addToClasspath(cp, "com.google.common.collect.ImmutableMap", false);
-        addToClasspath(cp, "it.unimi.dsi.fastutil.floats.Float2FloatOpenHashMap", false);
-        addToClasspath(cp, "org.bukkit.craftbukkit.libs.it.unimi.dsi.fastutil.floats.Float2FloatOpenHashMap", false);
-        addToClasspath(cp, "com.google.gson.Gson", false);
-        addToClasspath(cp, "org.apache.logging.log4j.Logger", false);
-        addToClasspath(cp, "org.slf4j.Logger", false);
-        addToClasspath(cp, "io.netty.buffer.ByteBuf", false);
-        addToClasspath(cp, "io.netty.channel.Channel", false);
-        addToClasspath(cp, "io.netty.handler.codec.AsciiHeadersEncoder", false);
-        addToClasspath(cp, "io.netty.util.AttributeKey", false);
-        addToClasspath(cp, "org.apache.commons.lang3.StringUtils", false);
-        classpath = ImmutableSet.copyOf(cp);
+    public static void setupClasspath(@NotNull Collection<String> additionalImports) {
+        classpath.clear();
+        addToClasspath("org.bukkit.Bukkit", true);
+        addToClasspath("org.jetbrains.annotations.NotNull", false);
+        addToClasspath("javax.annotation.Nonnull", false);
+        addToClasspath("org.objectweb.asm.ClassVisitor", false);
+        addToClasspath("com.google.common.collect.ImmutableMap", false);
+        addToClasspath("it.unimi.dsi.fastutil.floats.Float2FloatOpenHashMap", false);
+        addToClasspath("org.bukkit.craftbukkit.libs.it.unimi.dsi.fastutil.floats.Float2FloatOpenHashMap", false);
+        addToClasspath("com.google.gson.Gson", false);
+        addToClasspath("org.apache.logging.log4j.Logger", false);
+        addToClasspath("org.slf4j.Logger", false);
+        addToClasspath("io.netty.buffer.ByteBuf", false);
+        addToClasspath("io.netty.channel.Channel", false);
+        addToClasspath("io.netty.handler.codec.AsciiHeadersEncoder", false);
+        addToClasspath("io.netty.util.AttributeKey", false);
+        addToClasspath("org.apache.commons.lang3.StringUtils", false);
+        addToClasspath("net.kyori.adventure.audience.Audience", false);
+        addToClasspath("net.md_5.bungee.api.chat.BaseComponent", false);
+        for (String string : additionalImports) {
+            addToClasspath(string, false);
+        }
         LOGGER.info("Classpath for compiler: " + Joiner.on(File.pathSeparator).join(classpath));
     }
 
-    private static void addToClasspath(@NotNull Set<String> cp, @NotNull String name, boolean required) {
+    private static void addToClasspath(@NotNull String name, boolean required) {
         try {
-            cp.add(ClasspathUtil.getClasspath(Class.forName(name)));
+            JavaCompiler.classpath.add(ClasspathUtil.getClasspath(Class.forName(name)));
         } catch (ClassNotFoundException e) {
-            if (required) throw new RuntimeException(e);
+            if (required) {
+                throw new RuntimeException(e);
+            } else {
+                LOGGER.warn("Failed to add {} to classpath", name);
+            }
         }
     }
 

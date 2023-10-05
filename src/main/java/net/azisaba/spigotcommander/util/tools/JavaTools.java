@@ -27,7 +27,7 @@ public final class JavaTools {
             file = new File(path);
         }
         TOOLS_JAR_PATH = path;
-        UNAVAILABLE_REASON = load(file);
+        UNAVAILABLE_REASON = isLoaded() ? null : load(file);
     }
 
     public static boolean isLoaded() {
@@ -42,12 +42,12 @@ public final class JavaTools {
     @Nullable
     private static Throwable load(File file) {
         if (isLoaded()) return null;
-        if (!file.exists()) return new UnsupportedOperationException("tools.jar is not available");
+        if (!file.exists()) return new UnsupportedOperationException("no java compiler is provided and tools.jar is not available");
         try {
             try (URLClassLoader classLoader = new URLClassLoader(new URL[]{file.toURI().toURL()})) {
                 classLoader.loadClass("javax.tools.ToolProvider");
             }
-            if (!isLoaded()) return new UnsupportedOperationException("Loaded tools.jar but could not load classes");
+            if (!isLoaded()) return new UnsupportedOperationException("Loaded tools.jar but java compiler is still unavailable");
             return null;
         } catch (Throwable e) {
             return e;
